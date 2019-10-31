@@ -22,7 +22,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -240,25 +239,6 @@ public class Util {
 		return sdDir;
 	}
 
-	public static FileInput fromInputStream(Context context, File file,
-			String filename) throws IOException {
-		// InputStream is = new FileInputStream(f);
-		// final File file = storeToFile(context, is);
-		if (file == null) {
-			return null;
-		}
-		FileInput isa = null;
-		try {
-			isa = new FileInput(file, filename);
-		} catch (IOException e) {
-		/*	if (file != null) {  // ldm：这里可不能删，这可是用户文件
-				file.delete();
-			}*/
-			throw e;
-		}
-		return isa;
-	}
-
 	public static ExecutorService getExecutorService() {
 		return Executors.newSingleThreadExecutor();
 	}
@@ -436,7 +416,7 @@ public class Util {
 		return rs;
 	}
 
-	public static void checkParameters(Context context, File file,
+	public static void checkParameters(Context context, Object file,
 			Object fileParam, WanNOSObject obj, Callback callback)
 			throws InvalidParameterException {
 		String uploadToken = obj.getUploadToken();

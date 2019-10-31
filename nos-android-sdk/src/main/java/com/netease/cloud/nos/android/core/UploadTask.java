@@ -10,7 +10,6 @@ import com.netease.cloud.nos.android.http.HttpResult;
 import com.netease.cloud.nos.android.monitor.Monitor;
 import com.netease.cloud.nos.android.monitor.StatisticItem;
 import com.netease.cloud.nos.android.utils.FileDigest;
-import com.netease.cloud.nos.android.utils.FileInput;
 import com.netease.cloud.nos.android.utils.LogUtil;
 import com.netease.cloud.nos.android.utils.NetworkType;
 import com.netease.cloud.nos.android.utils.Util;
@@ -18,7 +17,10 @@ import com.netease.cloud.nos.android.utils.Util;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,7 +44,8 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
     private String token;
     private String bucketName;
     private String fileName;
-    private File file;
+    private InputStream inputStream;
+    private long fileSize;
     private Object fileParam;
     private String uploadContext;
     private Callback callback;
@@ -54,13 +57,18 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
     private StatisticItem item;
 
     public UploadTask(Context context, String uploadToken, String bucketName,
-                      String fileName, File file, Object fileParam, String uploadContext,
+                      String fileName, InputStream inputStream, Object fileParam, String uploadContext,
                       Callback callback, boolean isHttps, WanNOSObject meta) {
         this.context = context;
         this.token = uploadToken;
         this.bucketName = bucketName;
         this.fileName = fileName;
-        this.file = file;
+        this.inputStream = inputStream.markSupported() ? inputStream : new BufferedInputStream(inputStream);
+        try {
+            this.fileSize = inputStream.available();
+        } catch (IOException e) {
+            this.fileSize = 0;
+        }
         this.fileParam = fileParam;
         this.uploadContext = uploadContext;
         this.callback = callback;
@@ -70,9 +78,9 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
         this.MD5 = meta.getContentMD5();
 
         if (this.MD5 == null
-                && (file.length() <= WanAccelerator.getConf()
+                && (this.fileSize <= WanAccelerator.getConf()
                 .getMd5FileMaxSize())) {
-            this.MD5 = FileDigest.getFileMD5(file);
+            this.MD5 = FileDigest.getFileMD5(this.inputStream);
         }
 
     }
@@ -101,7 +109,7 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
                 postResult = new HttpResult(Code.SERVER_ERROR, new JSONObject(), null);
             }
             long end = System.currentTimeMillis();
-            float speed = (float) (((file.length() - offset) / 1024.0) / ((end - start) / 1000.0));
+            float speed = (float) (((fileSize - offset) / 1024.0) / ((end - start) / 1000.0));
             LogUtil.w(LOGTAG, "upload result:" + postResult.getStatusCode() + ", speed:" + speed + "KB/S");
 
             item.setUploaderUseTime(end - start);
@@ -218,14 +226,14 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
                     return offsetResult;
                 }
             }
-            if ((offset >= file.length() && file.length() != 0) || offset < 0) {
+            if ((offset >= fileSize && fileSize != 0) || offset < 0) {
                 // Don't record upload time
                 return new HttpResult(Code.INVALID_OFFSET, new JSONObject(),
                         new InvalidOffsetException("offset is invalid in server side, with offset:"
-                                + offset + ", file length: " + file.length()));
+                                + offset + ", file length: " + fileSize));
             }
 
-            HttpResult postResult = putFile(context, file, offset, chunkSize,
+            HttpResult postResult = putFile(context, inputStream, offset, chunkSize,
                     bucketName, fileName, token, uploadContext, isHttps);
 
             if (isFallback && postResult.getStatusCode() == Code.HTTP_SUCCESS) {
@@ -338,26 +346,30 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
         return result;
     }
 
-    private HttpResult putFile(Context ctx, File f, long offset, int chunkSize,
+    private HttpResult putFile(Context ctx, InputStream inputStream, long offset, int chunkSize,
                                String bucketName, String fileName, String token,
-                               String uploadContext, boolean isHttps) {
-        final long len = f.length();
+                               String uploadContext, boolean isHttps) throws IOException {
+        final long len = inputStream.available();
+
+        inputStream.skip(offset);
+        inputStream.mark(chunkSize);
         item.setFileSize(len);
         LogUtil.d(LOGTAG, "file length is: " + len);
         boolean flag = true;
-        FileInput input = null;
         int result = Constants.CODE_RETRY;
         HttpResult httpResult = null;
         this.uploadContext = uploadContext;
         try {
-            input = Util.fromInputStream(ctx, f, fileName);
             int count = 0;
             while (flag && ((offset < len) || (offset == 0 && len == 0)) && !upCancelled) {
                 boolean isLast = false;
                 int lg = (int) Math.min(chunkSize, len - offset);
                 LogUtil.d(LOGTAG, "upload block size is: " + lg);
                 String[] uploadServers = Util.getUploadServer(ctx, bucketName, isHttps);
-                byte[] chunkData = input.read(offset, lg);
+                byte[] chunkData = new byte[lg];
+                if (inputStream.read(chunkData) == 0) {
+                    break;
+                }
                 int fails = 0;
                 for (String s : uploadServers) {
                     if (lg + offset >= len) {
@@ -374,7 +386,13 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
                     result = httpResult.getStatusCode();
                     // put block success
                     if (result == Code.HTTP_SUCCESS) {
+                        long oldOffset = offset;
                         offset = httpResult.getMsg().getInt("offset");
+                        if (oldOffset + lg != offset) {
+                            inputStream.reset();
+                            inputStream.skip(offset - oldOffset);
+                        }
+                        inputStream.mark(chunkSize);
                         String newUploadContext = httpResult.getMsg()
                                 .getString("context");
                         if (!newUploadContext.equals(this.uploadContext)) {
@@ -382,7 +400,7 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
                                     this.uploadContext, newUploadContext);
                         }
                         this.uploadContext = newUploadContext;
-                        this.publishProgress(offset, file.length());
+                        this.publishProgress(offset, fileSize);
                         count++;
                         LogUtil.d(LOGTAG, "http post success, offset: "
                                 + offset + ", len: " + len + ", this is "
@@ -410,6 +428,7 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
                         case Code.HTTP_NO_RESPONSE:
                         case Code.SERVER_ERROR:
                         default:
+                            inputStream.reset();
                             item.setUploadRetryCount(++fails);
                             if (fails >= uploadServers.length) {
                                 flag = false;
@@ -426,8 +445,8 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
         } catch (Exception e) {
             LogUtil.e(LOGTAG, "upload block exception", e);
         } finally {
-            if (input != null) {
-                input.doClose();
+            if (inputStream != null) {
+                inputStream.close();
             }
         }
         return httpResult;

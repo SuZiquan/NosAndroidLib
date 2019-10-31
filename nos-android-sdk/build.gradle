@@ -1,0 +1,59 @@
+apply plugin: 'com.android.library'
+
+ext {
+    bintrayRepo = 'maven'
+    bintrayName = 'nos-android-sdk'
+
+    publishedGroupId = 'com.netease.cloud.nos.android'
+    libraryName = 'nos-android-sdk'
+    artifact = 'nos-android-sdk'
+
+    libraryDescription = 'Android SDK for NOS'
+
+    siteUrl = 'https://github.com/NetEase-Object-Storage/nos-android-sdk'
+    gitUrl = 'https://github.com/NetEase-Object-Storage/nos-android-sdk.git'
+    githubRepository= 'NetEase-Object-Storage/nos-android-sdk'
+    libraryVersion = '0.0.1'
+
+    developerId = 'suziquan'
+    developerName = 'suziquan'
+    developerEmail = 'suziquan@outlook.com'
+
+    licenseName = 'The Apache Software License, Version 2.0'
+    licenseUrl = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+    allLicenses = ["Apache-2.0"]
+
+}
+
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.2"
+
+
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion 29
+        versionCode 1
+        versionName "0.0.1"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation("com.squareup.okhttp3:okhttp:3.12.6")
+}
+
+apply from: 'https://raw.githubusercontent.com/attwellBrian/JCenter/master/installv1.gradle'
+apply from: 'https://raw.githubusercontent.com/attwellBrian/JCenter/master/bintrayv1.gradle'

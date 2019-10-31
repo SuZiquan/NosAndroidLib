@@ -59,7 +59,11 @@ public class AcceleratorConf {
 	public void setMontiroHost(String monitorHost) {
 		this.monitorHost = monitorHost;
 	}
-	
+
+	public void setMonitorHost(String monitorHost) {
+		this.monitorHost = monitorHost;
+	}
+
 	public String getCharset() {
 		return charset;
 	}

@@ -1,2 +1,2 @@
-include ':app'
+include ':app', ':nos-android-sdk'
 rootProject.name='NosAndroidLib'
