@@ -201,7 +201,7 @@ Android 9 开始 [默认启用网络传输层安全协议 (TLS)](https://develop
 	 
 	UploadTaskExecutor executor = WanAccelerator.putFileByHttp(
 	        this.getBaseContext(),                // 把当前Activity传进来
-	        f,                                    // 待上传文件对象 f = new File("FILE_TO_BE_UPLOADED_PATH")
+	        f,                                    // 待上传文件对象，支持Uri、File、FileDescriptor、InputStream几种类型
 	        f.getAbsolutePath(),                  // 在onUploadContextCreate和onProcess被回调的参数
 	                                              // 需要把待上传对象路径传过去
 	        uploadContext,                        // 上传上下文，用于断点续传
