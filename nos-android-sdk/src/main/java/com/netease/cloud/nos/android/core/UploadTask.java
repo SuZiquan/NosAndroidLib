@@ -128,6 +128,15 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
             LogUtil.e(LOGTAG, "upload exception", e);
             return new CallRet(fileParam, uploadContext, Code.HTTP_EXCEPTION,
                     "", "", null, e);
+        } finally {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
+            }
         }
     }
 

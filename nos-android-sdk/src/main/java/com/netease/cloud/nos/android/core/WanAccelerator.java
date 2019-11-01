@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.Timer;
@@ -122,21 +123,32 @@ public class WanAccelerator {
                                           String bucketName, String fileName, Object file, Object fileParam,
                                           String uploadContext, Callback callback, boolean isHttps,
                                           WanNOSObject obj) throws InvalidParameterException {
-
-        Util.checkParameters(context, file, fileParam, obj, callback);
         InputStream inputStream = null;
         try {
-            if (file instanceof InputStream) {
-                inputStream = (InputStream) file;
-            } else if (file instanceof File) {
-                inputStream = new FileInputStream((File) file);
-            } else if (file instanceof Uri) {
-                inputStream = context.getContentResolver().openInputStream((Uri) file);
-            } else if (file instanceof FileDescriptor){
-                inputStream = new FileInputStream((FileDescriptor)file);
+            try {
+                Util.checkParameters(context, file, fileParam, obj, callback);
+                if (file instanceof InputStream) {
+                    inputStream = (InputStream) file;
+                } else if (file instanceof File) {
+                    inputStream = new FileInputStream((File) file);
+                } else if (file instanceof Uri) {
+                    inputStream = context.getContentResolver().openInputStream((Uri) file);
+                } else if (file instanceof FileDescriptor) {
+                    inputStream = new FileInputStream((FileDescriptor) file);
+                }
+            } catch (FileNotFoundException e) {
+                throw new InvalidParameterException("file not found");
             }
-        } catch (FileNotFoundException e) {
-            throw new InvalidParameterException("file not found");
+        } catch (InvalidParameterException e) {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
+            }
+            throw e;
         }
 
         if (!isInit) {
@@ -155,6 +167,14 @@ public class WanAccelerator {
             }
             return new UploadTaskExecutor(task);
         } catch (Exception e) {
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
+            }
             callback.onFailure(new CallRet(fileParam, uploadContext,
                     Code.UNKNOWN_REASON, "", "", null, e));
             return null;
