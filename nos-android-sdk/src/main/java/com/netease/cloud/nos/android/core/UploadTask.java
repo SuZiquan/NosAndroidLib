@@ -129,14 +129,7 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
             return new CallRet(fileParam, uploadContext, Code.HTTP_EXCEPTION,
                     "", "", null, e);
         } finally {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
-            }
+            Util.closeInputStream(inputStream);
         }
     }
 
@@ -168,6 +161,7 @@ public class UploadTask extends AsyncTask<Object, Object, CallRet> {
     @Override
     protected void onCancelled() {
         LogUtil.d(LOGTAG, "on cancelled");
+        Util.closeInputStream(inputStream);
         item.setUploaderSucc(Code.MONITOR_CANCELED);
         item.setUploaderHttpCode(Code.UPLOADING_CANCEL);
         Monitor.add(context, item);

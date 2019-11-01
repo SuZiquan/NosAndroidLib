@@ -22,6 +22,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -552,6 +554,17 @@ public class Util {
 
 		}
 
+	}
+
+	public static void closeInputStream(InputStream inputStream) {
+		try {
+			if (inputStream != null) {
+				inputStream.close();
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+			LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
+		}
 	}
 
 }

@@ -140,14 +140,7 @@ public class WanAccelerator {
                 throw new InvalidParameterException("file not found");
             }
         } catch (InvalidParameterException e) {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
-            }
+            Util.closeInputStream(inputStream);
             throw e;
         }
 
@@ -167,14 +160,7 @@ public class WanAccelerator {
             }
             return new UploadTaskExecutor(task);
         } catch (Exception e) {
-            try {
-                if (inputStream != null) {
-                    inputStream.close();
-                }
-            } catch (IOException ex) {
-                ex.printStackTrace();
-                LogUtil.e(LOGTAG, "Failed to close InputStream: " + e.getMessage());
-            }
+            Util.closeInputStream(inputStream);
             callback.onFailure(new CallRet(fileParam, uploadContext,
                     Code.UNKNOWN_REASON, "", "", null, e));
             return null;
