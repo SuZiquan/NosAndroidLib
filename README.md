@@ -33,7 +33,7 @@ dependencies {
 ```
 
 ### 权限配置
-NOS Android SDK 需要读取文件和获取网络状态权限，需要在 `AndroidMainfest.xml` 中加入以下权限配置：
+NOS Android SDK 需要读取文件和获取网络状态权限，需要在 `AndroidManifest.xml` 中加入以下权限配置：
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
 <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
